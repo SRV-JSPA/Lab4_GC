@@ -56,7 +56,7 @@ fn ruido_perlin(x: f32, y: f32) -> f32 {
   (x.sin() * y.cos()) * 0.5
 }
 
-fn planeta_gaseoso(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+pub fn planeta_gaseoso(fragment: &Fragment, uniforms: &Uniforms) -> Color {
   let color3 = Color::new(245, 245, 220);    
   let color1 = Color::new(255, 255, 255);    
   let color2 = Color::new(173, 216, 230);    
@@ -88,7 +88,7 @@ fn planeta_gaseoso(fragment: &Fragment, uniforms: &Uniforms) -> Color {
   color_final * fragment.intensity
 }
 
-fn black_and_white(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+pub fn black_and_white(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     let seed = uniforms.time as f32 * fragment.vertex_position.y * fragment.vertex_position.x;
   
     let mut rng = StdRng::seed_from_u64(seed.abs() as u64);
@@ -104,7 +104,7 @@ fn black_and_white(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     black_or_white * fragment.intensity
 }
   
-fn dalmata_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+pub fn dalmata_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     let zoom = 100.0;
     let ox = 0.0;
     let oy = 0.0;
@@ -129,7 +129,7 @@ fn dalmata_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     noise_color * fragment.intensity
 }
   
-fn cloud_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+pub fn cloud_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     let zoom = 100.0;  
     let ox = 100.0; 
     let oy = 100.0;
@@ -154,7 +154,7 @@ fn cloud_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     noise_color * fragment.intensity
 }
   
-fn cellular_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+pub fn cellular_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     let zoom = 30.0;  
     let ox = 50.0;    
     let oy = 50.0;    
@@ -183,7 +183,7 @@ fn cellular_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     color_final * fragment.intensity
 }
   
-fn lava_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+pub fn lava_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     let bright_color = Color::new(255, 240, 0); 
     let dark_color = Color::new(130, 20, 0);   
   
