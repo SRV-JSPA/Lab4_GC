@@ -8,6 +8,7 @@ use std::f32::consts::PI;
 use rand::Rng;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
+use fastnoise_lite::NoiseType;
 
 pub fn vertex_shader(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
     let position = Vec4::new(
@@ -155,34 +156,23 @@ pub fn cloud_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
 }
   
 pub fn cellular_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
-    let zoom = 30.0;  
-    let ox = 50.0;    
-    let oy = 50.0;    
-    let x = fragment.vertex_position.x;
-    let y = fragment.vertex_position.y;
-  
-    
-    let cell_noise_value = uniforms.noise.get_noise_2d(x * zoom + ox, y * zoom + oy).abs();
-  
-    
-    let cell_color_1 = Color::new(85, 107, 47);   
-    let cell_color_2 = Color::new(124, 252, 0);   
-    let cell_color_3 = Color::new(34, 139, 34);   
-    let cell_color_4 = Color::new(173, 255, 47);  
-  
-    let color_final = if cell_noise_value < 0.15 {
-      cell_color_1
-    } else if cell_noise_value < 0.7 {
-      cell_color_2
-    } else if cell_noise_value < 0.75 {
-      cell_color_3
-    } else {
-      cell_color_4
-    };
-  
-    color_final * fragment.intensity
+  let zoom = 200.0;  
+  let ox = 100.0;    
+  let oy = 100.0;    
+  let x = fragment.vertex_position.x;
+  let y = fragment.vertex_position.y;
+
+  let cell_noise_value = uniforms.noise.get_noise_2d(x * zoom + ox, y * zoom + oy).abs();
+
+  let color_piedra = Color::new(180, 120, 60);  
+  let color_mas_oscuro = Color::new(110, 50, 10);  
+
+  let factor = (cell_noise_value * cell_noise_value) * 10.0;  
+  let color_final = color_mas_oscuro.lerp(&color_piedra, factor.clamp(0.0, 1.0));
+
+  color_final * fragment.intensity
 }
-  
+
 pub fn lava_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     let bright_color = Color::new(255, 240, 0); 
     let dark_color = Color::new(130, 20, 0);   
@@ -217,3 +207,12 @@ pub fn lava_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
   
     color * fragment.intensity
 }
+
+pub fn shader_planeta_rocoso(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+    // Definir un color beige más oscuro
+    let color_beige_oscuro = Color::new(222, 222, 180); // Beige más oscuro en RGB
+
+    // Devolver el color beige oscuro para todos los fragmentos
+    color_beige_oscuro * fragment.intensity
+}
+

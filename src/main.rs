@@ -17,7 +17,7 @@ use vertex::Vertex;
 use obj::Obj;
 use camera::Camera;
 use triangle::triangle;
-use shaders::{fragment_shader, planeta_gaseoso, black_and_white, lava_shader}; 
+use shaders::{fragment_shader, planeta_gaseoso, black_and_white, lava_shader, shader_planeta_rocoso, cellular_shader}; 
 use crate::fragment::Fragment;
 use crate::color::Color;
 use crate::shaders::vertex_shader;
@@ -32,11 +32,43 @@ pub struct Uniforms {
     noise: FastNoiseLite
 }
 
-fn crear_ruido() -> FastNoiseLite {
+fn crear_ruido_perlin() -> FastNoiseLite {
     let mut noise = FastNoiseLite::new();
     noise.set_noise_type(Some(fastnoise_lite::NoiseType::Perlin)); 
     noise
 }
+
+fn crear_ruido_cellular() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::new();
+
+    // Configurar el tipo de ruido como Cellular
+    noise.set_noise_type(Some(fastnoise_lite::NoiseType::Cellular));
+
+    // Configurar la semilla
+    noise.set_seed(Some(100));  // Establecer la semilla en 100
+
+    // Configurar la frecuencia
+    noise.set_frequency(Some(0.080));  // Establecer la frecuencia a 0.080
+
+    // Configurar la función de distancia
+    noise.set_cellular_distance_function(Some(fastnoise_lite::CellularDistanceFunction::EuclideanSq));  // Usar Euclidean Sq
+
+    // Configurar el tipo de retorno
+    noise.set_cellular_return_type(Some(fastnoise_lite::CellularReturnType::Distance2Div));  // Usar Distance como tipo de retorno
+
+    // Configurar el jitter
+    noise.set_cellular_jitter(Some(1.0));  // Establecer el jitter a 1.0 para una mayor irregularidad
+
+    // Configurar el fractal usando los valores de la imagen
+    noise.set_fractal_type(Some(fastnoise_lite::FractalType::FBm));  // Usar tipo Ridged
+    noise.set_fractal_octaves(Some(9));  // Establecer Octavas a 3
+    noise.set_fractal_lacunarity(Some(1.0));  // Establecer Lacunaridad a 2.0
+    noise.set_fractal_gain(Some(0.1));  // Establecer Gain a 0.5
+
+    noise  // Retornar el ruido configurado
+}
+
+
 
 fn main() {
     let window_width = 1000;
@@ -89,6 +121,12 @@ fn main() {
         if window.is_key_down(Key::Key3) {
             shader_actual = 3;
         }
+        if window.is_key_down(Key::Key4) {
+            shader_actual = 4;
+        }
+        if window.is_key_down(Key::Key5) {
+            shader_actual = 5;
+        }
 
         time += 1;
 
@@ -101,24 +139,36 @@ fn main() {
         let projection_matrix = create_perspective_matrix(window_width as f32, window_height as f32);
         let viewport_matrix = create_viewport_matrix(framebuffer_width as f32, framebuffer_height as f32);
 
-        let noise = crear_ruido(); 
+        let noise_perlin = crear_ruido_perlin(); 
+        let noise_cellular = crear_ruido_cellular(); 
 
-        let uniforms = Uniforms { 
+        let uniforms_perlin = Uniforms { 
             model_matrix, 
             view_matrix, 
             projection_matrix, 
             viewport_matrix,
             time,
-            noise 
+            noise: noise_perlin 
+        };
+
+        let uniforms_cellular = Uniforms { 
+            model_matrix, 
+            view_matrix, 
+            projection_matrix, 
+            viewport_matrix,
+            time,
+            noise: noise_cellular
         };
 
         framebuffer.set_current_color(0xFFDDDD);
 
         match shader_actual {
-            1 => render_shader(&mut framebuffer, &uniforms, &vertex_arrays, planeta_gaseoso),
-            2 => render_shader(&mut framebuffer, &uniforms, &vertex_arrays, black_and_white),
-            3 => render_shader(&mut framebuffer, &uniforms, &vertex_arrays, lava_shader),
-            _ => render_shader(&mut framebuffer, &uniforms, &vertex_arrays, fragment_shader), 
+            1 => render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays, planeta_gaseoso),
+            2 => render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays, black_and_white),
+            3 => render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays, lava_shader),
+            4 => render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays, shader_planeta_rocoso),
+            5 => render_shader(&mut framebuffer, &uniforms_cellular, &vertex_arrays, cellular_shader),
+            _ => render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays, fragment_shader), 
         }
 
         window
