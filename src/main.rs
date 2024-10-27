@@ -17,11 +17,13 @@ use vertex::Vertex;
 use obj::Obj;
 use camera::Camera;
 use triangle::triangle;
-use shaders::{fragment_shader, planeta_gaseoso, black_and_white, lava_shader, shader_planeta_rocoso, cellular_shader}; 
+use shaders::{fragment_shader, planeta_gaseoso, black_and_white, lava_shader, cellular_shader, shader_luna}; 
 use crate::fragment::Fragment;
 use crate::color::Color;
 use crate::shaders::vertex_shader;
+use noise::{NoiseFn, Simplex};
 use fastnoise_lite::FastNoiseLite;
+use crate::shaders::vertex_shader_simplex;
 
 pub struct Uniforms {
     model_matrix: Mat4,
@@ -32,43 +34,49 @@ pub struct Uniforms {
     noise: FastNoiseLite
 }
 
+pub struct Uniforms_Simplex {
+    model_matrix: Mat4,
+    view_matrix: Mat4,
+    projection_matrix: Mat4,
+    viewport_matrix: Mat4,
+    time: u32,
+    noise: Simplex,
+}
+
+fn crear_ruido_simplex() -> Simplex {
+    Simplex::new(100)
+}
+
 fn crear_ruido_perlin() -> FastNoiseLite {
     let mut noise = FastNoiseLite::new();
-    noise.set_noise_type(Some(fastnoise_lite::NoiseType::Perlin)); 
+
+    noise.set_noise_type(Some(fastnoise_lite::NoiseType::Perlin));
+
+    noise.set_seed(Some(100)); 
+    noise.set_frequency(Some(0.030)); 
+
+    noise.set_fractal_type(Some(fastnoise_lite::FractalType::PingPong));
+    noise.set_fractal_octaves(Some(9)); 
+    noise.set_fractal_lacunarity(Some(1.0)); 
+    noise.set_fractal_gain(Some(0.100)); 
+    noise.set_fractal_ping_pong_strength(Some(9.0)); 
     noise
 }
 
 fn crear_ruido_cellular() -> FastNoiseLite {
     let mut noise = FastNoiseLite::new();
-
-    // Configurar el tipo de ruido como Cellular
     noise.set_noise_type(Some(fastnoise_lite::NoiseType::Cellular));
-
-    // Configurar la semilla
-    noise.set_seed(Some(100));  // Establecer la semilla en 100
-
-    // Configurar la frecuencia
-    noise.set_frequency(Some(0.080));  // Establecer la frecuencia a 0.080
-
-    // Configurar la función de distancia
-    noise.set_cellular_distance_function(Some(fastnoise_lite::CellularDistanceFunction::EuclideanSq));  // Usar Euclidean Sq
-
-    // Configurar el tipo de retorno
-    noise.set_cellular_return_type(Some(fastnoise_lite::CellularReturnType::Distance2Div));  // Usar Distance como tipo de retorno
-
-    // Configurar el jitter
-    noise.set_cellular_jitter(Some(1.0));  // Establecer el jitter a 1.0 para una mayor irregularidad
-
-    // Configurar el fractal usando los valores de la imagen
-    noise.set_fractal_type(Some(fastnoise_lite::FractalType::FBm));  // Usar tipo Ridged
-    noise.set_fractal_octaves(Some(9));  // Establecer Octavas a 3
-    noise.set_fractal_lacunarity(Some(1.0));  // Establecer Lacunaridad a 2.0
-    noise.set_fractal_gain(Some(0.1));  // Establecer Gain a 0.5
-
-    noise  // Retornar el ruido configurado
+    noise.set_seed(Some(100)); 
+    noise.set_frequency(Some(0.080));  
+    noise.set_cellular_distance_function(Some(fastnoise_lite::CellularDistanceFunction::EuclideanSq));  
+    noise.set_cellular_return_type(Some(fastnoise_lite::CellularReturnType::Distance2Div));  
+    noise.set_cellular_jitter(Some(1.0)); 
+    noise.set_fractal_type(Some(fastnoise_lite::FractalType::FBm));  
+    noise.set_fractal_octaves(Some(9));  
+    noise.set_fractal_lacunarity(Some(1.0));  
+    noise.set_fractal_gain(Some(0.3)); 
+    noise 
 }
-
-
 
 fn main() {
     let window_width = 1000;
@@ -93,6 +101,7 @@ fn main() {
 
     let translation = Vec3::new(0.0, 0.0, 0.0);
     let rotation = Vec3::new(0.0, 0.0, 0.0);
+    let rotation_anillos = Vec3::new(PI / 4.0, 0.0, 0.0);
     let scale = 1.0f32;
 
     let mut camera = Camera::new(
@@ -101,10 +110,13 @@ fn main() {
         Vec3::new(0.0, 1.0, 0.0)
     );
 
-    let obj = Obj::load("assets/models/sphere.obj").expect("Failed to load obj");
-    let vertex_arrays = obj.get_vertex_array(); 
-    let mut time = 0;
+    let obj_sphere = Obj::load("assets/models/sphere.obj").expect("Failed to load sphere.obj");
+    let vertex_arrays_sphere = obj_sphere.get_vertex_array();
 
+    let obj_anillos = Obj::load("assets/models/anillos.obj").expect("Failed to load anillos.obj");
+    let vertex_arrays_anillos = obj_anillos.get_vertex_array();
+
+    let mut time = 0;
     let mut shader_actual = 1;
 
     while window.is_open() {
@@ -135,6 +147,7 @@ fn main() {
         framebuffer.clear();
 
         let model_matrix = create_model_matrix(translation, scale, rotation);
+        let model_matrix_anillos = create_model_matrix(translation, scale, rotation_anillos);
         let view_matrix = create_view_matrix(camera.eye, camera.center, camera.up);
         let projection_matrix = create_perspective_matrix(window_width as f32, window_height as f32);
         let viewport_matrix = create_viewport_matrix(framebuffer_width as f32, framebuffer_height as f32);
@@ -143,32 +156,78 @@ fn main() {
         let noise_cellular = crear_ruido_cellular(); 
 
         let uniforms_perlin = Uniforms { 
-            model_matrix, 
-            view_matrix, 
-            projection_matrix, 
-            viewport_matrix,
+            model_matrix: model_matrix.clone(), 
+            view_matrix: view_matrix.clone(), 
+            projection_matrix: projection_matrix.clone(), 
+            viewport_matrix: viewport_matrix.clone(),
             time,
-            noise: noise_perlin 
+            noise: crear_ruido_perlin() 
+        };
+
+        let uniforms_anillos = Uniforms {
+            model_matrix: model_matrix_anillos, 
+            view_matrix: view_matrix.clone(), 
+            projection_matrix: projection_matrix.clone(), 
+            viewport_matrix: viewport_matrix.clone(),
+            time,
+            noise: crear_ruido_perlin() 
         };
 
         let uniforms_cellular = Uniforms { 
-            model_matrix, 
-            view_matrix, 
-            projection_matrix, 
-            viewport_matrix,
+            model_matrix: model_matrix.clone(), 
+            view_matrix: view_matrix.clone(), 
+            projection_matrix: projection_matrix.clone(), 
+            viewport_matrix: viewport_matrix.clone(),
             time,
-            noise: noise_cellular
+            noise: crear_ruido_cellular() 
+        };
+
+        let uniforms_simplex = Uniforms_Simplex { 
+            model_matrix: model_matrix.clone(), 
+            view_matrix: view_matrix.clone(), 
+            projection_matrix: projection_matrix.clone(), 
+            viewport_matrix: viewport_matrix.clone(),
+            time,
+            noise: crear_ruido_simplex() 
         };
 
         framebuffer.set_current_color(0xFFDDDD);
 
         match shader_actual {
-            1 => render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays, planeta_gaseoso),
-            2 => render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays, black_and_white),
-            3 => render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays, lava_shader),
-            4 => render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays, shader_planeta_rocoso),
-            5 => render_shader(&mut framebuffer, &uniforms_cellular, &vertex_arrays, cellular_shader),
-            _ => render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays, fragment_shader), 
+            1 => {
+            render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays_sphere, planeta_gaseoso);
+            render_shader(&mut framebuffer, &uniforms_anillos, &vertex_arrays_anillos, lava_shader);
+            }
+            2 => render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays_sphere, black_and_white),
+            3 => render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays_sphere, lava_shader),
+            4 => render_shader_simplex(&mut framebuffer, &uniforms_simplex, &vertex_arrays_sphere, shader_luna),
+            5 => {
+                render_shader(&mut framebuffer, &uniforms_cellular, &vertex_arrays_sphere, cellular_shader);
+
+                
+                let radio_orbita = 2.0; 
+                let velocidad_orbita = 0.02; 
+                let x_offset = radio_orbita * (time as f32 * velocidad_orbita).cos();
+                let z_offset = radio_orbita * (time as f32 * velocidad_orbita).sin();
+
+                
+                let translacion_luna = Vec3::new(x_offset, 0.0, z_offset);
+                let escala_luna = 0.5; 
+                let model_matrix_luna = create_model_matrix(translacion_luna, escala_luna, rotation);
+
+                let luna = Uniforms_Simplex {
+                    model_matrix: model_matrix_luna,
+                    view_matrix: view_matrix.clone(),
+                    projection_matrix: projection_matrix.clone(),
+                    viewport_matrix: viewport_matrix.clone(),
+                    time,
+                    noise: crear_ruido_simplex() 
+                };
+
+                
+                render_shader_simplex(&mut framebuffer, &luna, &vertex_arrays_sphere, shader_luna);
+            }
+            _ => render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays_sphere, fragment_shader),
         }
 
         window
@@ -188,6 +247,47 @@ fn render_shader(
     let mut transformed_vertices = Vec::with_capacity(vertex_array.len());
     for vertex in vertex_array {
         let transformed = vertex_shader(vertex, uniforms);
+        transformed_vertices.push(transformed);
+    }
+
+    let mut triangles = Vec::new();
+    for i in (0..transformed_vertices.len()).step_by(3) {
+        if i + 2 < transformed_vertices.len() {
+            triangles.push([
+                transformed_vertices[i].clone(),
+                transformed_vertices[i + 1].clone(),
+                transformed_vertices[i + 2].clone(),
+            ]);
+        }
+    }
+
+    let mut fragments = Vec::new();
+    for tri in &triangles {
+        fragments.extend(triangle(&tri[0], &tri[1], &tri[2]));
+    }
+
+    for fragment in fragments {
+        let x = fragment.position.x as usize;
+        let y = fragment.position.y as usize;
+
+        if x < framebuffer.width && y < framebuffer.height {
+            let shaded_color = fragment_shader_fn(&fragment, &uniforms);
+            let color = shaded_color.to_hex();
+            framebuffer.set_current_color(color);
+            framebuffer.point(x, y, fragment.depth);
+        }
+    }
+}
+
+fn render_shader_simplex(
+    framebuffer: &mut Framebuffer,
+    uniforms: &Uniforms_Simplex,
+    vertex_array: &[Vertex],
+    fragment_shader_fn: fn(&Fragment, &Uniforms_Simplex) -> Color
+) {
+    let mut transformed_vertices = Vec::with_capacity(vertex_array.len());
+    for vertex in vertex_array {
+        let transformed = vertex_shader_simplex(vertex, uniforms);
         transformed_vertices.push(transformed);
     }
 

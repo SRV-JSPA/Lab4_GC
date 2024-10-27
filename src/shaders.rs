@@ -1,4 +1,5 @@
-
+use noise::Simplex;
+use noise::NoiseFn;
 use nalgebra_glm::{Vec3, Vec4, Mat3, dot, mat4_to_mat3};
 use crate::vertex::Vertex;
 use crate::Uniforms;
@@ -9,6 +10,7 @@ use rand::Rng;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 use fastnoise_lite::NoiseType;
+use crate::Uniforms_Simplex;
 
 pub fn vertex_shader(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
     let position = Vec4::new(
@@ -45,6 +47,41 @@ pub fn vertex_shader(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
     }
 }
 
+pub fn vertex_shader_simplex(vertex: &Vertex, uniforms: &Uniforms_Simplex) -> Vertex {
+  let position = Vec4::new(
+      vertex.position.x,
+      vertex.position.y,
+      vertex.position.z,
+      1.0
+  );
+
+  let transformed = uniforms.projection_matrix * uniforms.view_matrix * uniforms.model_matrix * position;
+
+  let w = transformed.w;
+  let transformed_position = Vec4::new(
+      transformed.x / w,
+      transformed.y / w,
+      transformed.z / w,
+      1.0
+  );
+
+  let screen_position = uniforms.viewport_matrix * transformed_position;
+
+  let model_mat3 = mat4_to_mat3(&uniforms.model_matrix);
+  let normal_matrix = model_mat3.transpose().try_inverse().unwrap_or(Mat3::identity());
+
+  let transformed_normal = normal_matrix * vertex.normal;
+
+  Vertex {
+      position: vertex.position,
+      normal: vertex.normal,
+      tex_coords: vertex.tex_coords,
+      color: vertex.color,
+      transformed_position: Vec3::new(screen_position.x, screen_position.y, screen_position.z),
+      transformed_normal: transformed_normal
+  }
+}
+
 pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     planeta_gaseoso(fragment, uniforms)
     // dalmata_shader(fragment, uniforms)
@@ -55,6 +92,40 @@ pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
 
 fn ruido_perlin(x: f32, y: f32) -> f32 {
   (x.sin() * y.cos()) * 0.5
+}
+
+fn ruido_con_fractal_strata(simplex: &Simplex, x: f64, y: f64, octaves: usize, persistence: f64) -> f64 {
+  let mut amplitude = 10.0;
+  let mut frequency = 20.0;
+  let mut noise_value = 20.0;
+  let mut max_value = 0.0;
+
+  for _ in 0..octaves {
+      let value = simplex.get([x * frequency, y * frequency]);
+
+      noise_value += (value * amplitude).abs();
+      max_value += amplitude;
+      amplitude *= persistence;
+      frequency *= 2.0;
+  }
+
+  noise_value / max_value
+}
+
+pub fn shader_luna(fragment: &Fragment, uniforms: &Uniforms_Simplex) -> Color {
+  let zoom = 0.5;
+  let ox = 50.0;
+  let oy = 50.0;
+  let x = fragment.vertex_position.x * zoom + ox;
+  let y = fragment.vertex_position.y * zoom + oy;
+
+  let noise_value = ruido_con_fractal_strata(&uniforms.noise, x as f64, y as f64, 5, 0.5);
+
+  let color_base = Color::new(128, 128, 128);
+  let factor = (noise_value + 1.0) as f32 / 2.0; 
+  let color_final = color_base * factor;
+
+  color_final * fragment.intensity
 }
 
 pub fn planeta_gaseoso(fragment: &Fragment, uniforms: &Uniforms) -> Color {
@@ -156,7 +227,7 @@ pub fn cloud_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
 }
   
 pub fn cellular_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
-  let zoom = 200.0;  
+  let zoom = 300.0;  
   let ox = 100.0;    
   let oy = 100.0;    
   let x = fragment.vertex_position.x;
@@ -207,12 +278,3 @@ pub fn lava_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
   
     color * fragment.intensity
 }
-
-pub fn shader_planeta_rocoso(fragment: &Fragment, uniforms: &Uniforms) -> Color {
-    // Definir un color beige más oscuro
-    let color_beige_oscuro = Color::new(222, 222, 180); // Beige más oscuro en RGB
-
-    // Devolver el color beige oscuro para todos los fragmentos
-    color_beige_oscuro * fragment.intensity
-}
-
