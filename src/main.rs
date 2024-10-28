@@ -17,7 +17,7 @@ use vertex::Vertex;
 use obj::Obj;
 use camera::Camera;
 use triangle::triangle;
-use shaders::{fragment_shader, planeta_gaseoso, black_and_white, lava_shader, cellular_shader, shader_luna}; 
+use shaders::{fragment_shader, planeta_gaseoso, lava_shader, cellular_shader, shader_luna, shader_puntas, shader_grupos, shader_agua, bacteria_shader, camo_shader, shader_agujero_negro, shader_variado, anillos_shader}; 
 use crate::fragment::Fragment;
 use crate::color::Color;
 use crate::shaders::vertex_shader;
@@ -75,6 +75,92 @@ fn crear_ruido_cellular() -> FastNoiseLite {
     noise.set_fractal_octaves(Some(9));  
     noise.set_fractal_lacunarity(Some(1.0));  
     noise.set_fractal_gain(Some(0.3)); 
+    noise 
+}
+
+fn crear_ruido_cellular_bacteria() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::new();
+    noise.set_noise_type(Some(fastnoise_lite::NoiseType::Cellular));
+    noise.set_seed(Some(1337)); 
+    noise.set_frequency(Some(0.010));  
+    noise.set_cellular_distance_function(Some(fastnoise_lite::CellularDistanceFunction::EuclideanSq));  
+    noise.set_cellular_return_type(Some(fastnoise_lite::CellularReturnType::Distance2Mul));  
+    noise.set_cellular_jitter(Some(1.0)); 
+    noise.set_fractal_type(Some(fastnoise_lite::FractalType::PingPong));  
+    noise.set_fractal_octaves(Some(3));  
+    noise.set_fractal_lacunarity(Some(2.0));  
+    noise.set_fractal_gain(Some(1.0)); 
+    noise.set_fractal_ping_pong_strength(Some(7.0)); 
+    noise 
+}
+
+fn crear_ruido_cellular_agujero_negro() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::new();
+    noise.set_noise_type(Some(fastnoise_lite::NoiseType::Perlin));
+    noise.set_seed(Some(100)); 
+    noise.set_frequency(Some(0.030));  
+    noise.set_fractal_type(Some(fastnoise_lite::FractalType::PingPong));  
+    noise.set_fractal_octaves(Some(9));  
+    noise.set_fractal_lacunarity(Some(1.0));  
+    noise.set_fractal_gain(Some(1.0)); 
+    noise.set_fractal_weighted_strength(Some(3.0));
+    noise.set_fractal_ping_pong_strength(Some(10.0));  
+    noise 
+}
+
+fn crear_ruido_camo() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::new();
+    noise.set_noise_type(Some(fastnoise_lite::NoiseType::OpenSimplex2));
+    noise.set_seed(Some(1337)); 
+    noise.set_frequency(Some(0.010));  
+    noise.set_fractal_type(Some(fastnoise_lite::FractalType::Ridged));  
+    noise.set_fractal_octaves(Some(9));  
+    noise.set_fractal_lacunarity(Some(5.0));  
+    noise.set_fractal_gain(Some(1.0)); 
+    noise.set_fractal_weighted_strength(Some(7.0)); 
+    noise 
+}
+
+fn crear_ruido_variado() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::new();
+    noise.set_noise_type(Some(fastnoise_lite::NoiseType::Cellular));
+    noise.set_seed(Some(100)); 
+    noise.set_frequency(Some(0.030));  
+    noise.set_fractal_type(Some(fastnoise_lite::FractalType::FBm));  
+    noise.set_fractal_octaves(Some(9));  
+    noise.set_fractal_lacunarity(Some(1.0));  
+    noise.set_fractal_gain(Some(1.0)); 
+    noise.set_fractal_weighted_strength(Some(3.0)); 
+    noise.set_cellular_distance_function(Some(fastnoise_lite::CellularDistanceFunction::EuclideanSq));  
+    noise.set_cellular_return_type(Some(fastnoise_lite::CellularReturnType::Distance2Div));  
+    noise.set_cellular_jitter(Some(1.0)); 
+    noise 
+}
+
+fn crear_ruido_grupos() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::new();
+    noise.set_noise_type(Some(fastnoise_lite::NoiseType::Cellular));
+    noise.set_seed(Some(1337)); 
+    noise.set_frequency(Some(0.030));  
+    noise.set_cellular_distance_function(Some(fastnoise_lite::CellularDistanceFunction::Hybrid));  
+    noise.set_cellular_return_type(Some(fastnoise_lite::CellularReturnType::Distance2Sub));  
+    noise.set_cellular_jitter(Some(2.0)); 
+    noise.set_fractal_type(Some(fastnoise_lite::FractalType::PingPong));  
+    noise.set_fractal_octaves(Some(3));  
+    noise.set_fractal_lacunarity(Some(2.0));  
+    noise.set_fractal_gain(Some(0.5)); 
+    noise.set_fractal_ping_pong_strength(Some(1.0)); 
+    noise 
+}
+
+fn crear_ruido_cellular_puntas() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::new();
+    noise.set_noise_type(Some(fastnoise_lite::NoiseType::Cellular));
+    noise.set_seed(Some(1337)); 
+    noise.set_frequency(Some(0.030));  
+    noise.set_cellular_distance_function(Some(fastnoise_lite::CellularDistanceFunction::Manhattan));  
+    noise.set_cellular_return_type(Some(fastnoise_lite::CellularReturnType::Distance));  
+    noise.set_cellular_jitter(Some(1.0)); 
     noise 
 }
 
@@ -139,6 +225,21 @@ fn main() {
         if window.is_key_down(Key::Key5) {
             shader_actual = 5;
         }
+        if window.is_key_down(Key::Key6) {
+            shader_actual = 6;
+        }
+        if window.is_key_down(Key::Key7) {
+            shader_actual = 7;
+        }
+        if window.is_key_down(Key::Key8) {
+            shader_actual = 8;
+        }
+        if window.is_key_down(Key::Key9) {
+            shader_actual = 9;
+        }
+        if window.is_key_down(Key::Key0) {
+            shader_actual = 0;
+        }
 
         time += 1;
 
@@ -173,6 +274,15 @@ fn main() {
             noise: crear_ruido_perlin() 
         };
 
+        let uniforms_variado = Uniforms {
+            model_matrix: model_matrix_anillos, 
+            view_matrix: view_matrix.clone(), 
+            projection_matrix: projection_matrix.clone(), 
+            viewport_matrix: viewport_matrix.clone(),
+            time,
+            noise: crear_ruido_variado() 
+        };
+
         let uniforms_cellular = Uniforms { 
             model_matrix: model_matrix.clone(), 
             view_matrix: view_matrix.clone(), 
@@ -180,6 +290,51 @@ fn main() {
             viewport_matrix: viewport_matrix.clone(),
             time,
             noise: crear_ruido_cellular() 
+        };
+
+        let uniforms_camo = Uniforms { 
+            model_matrix: model_matrix.clone(), 
+            view_matrix: view_matrix.clone(), 
+            projection_matrix: projection_matrix.clone(), 
+            viewport_matrix: viewport_matrix.clone(),
+            time,
+            noise: crear_ruido_camo() 
+        };
+
+        let uniforms_cellular_puntas = Uniforms { 
+            model_matrix: model_matrix.clone(), 
+            view_matrix: view_matrix.clone(), 
+            projection_matrix: projection_matrix.clone(), 
+            viewport_matrix: viewport_matrix.clone(),
+            time,
+            noise: crear_ruido_cellular_puntas() 
+        };
+
+        let uniforms_cellular_agujero_negro = Uniforms { 
+            model_matrix: model_matrix.clone(), 
+            view_matrix: view_matrix.clone(), 
+            projection_matrix: projection_matrix.clone(), 
+            viewport_matrix: viewport_matrix.clone(),
+            time,
+            noise: crear_ruido_cellular_agujero_negro() 
+        };
+
+        let uniforms_cellular_bacteria = Uniforms { 
+            model_matrix: model_matrix.clone(), 
+            view_matrix: view_matrix.clone(), 
+            projection_matrix: projection_matrix.clone(), 
+            viewport_matrix: viewport_matrix.clone(),
+            time,
+            noise: crear_ruido_cellular_bacteria() 
+        };
+
+        let uniforms_cellular_grupos = Uniforms { 
+            model_matrix: model_matrix.clone(), 
+            view_matrix: view_matrix.clone(), 
+            projection_matrix: projection_matrix.clone(), 
+            viewport_matrix: viewport_matrix.clone(),
+            time,
+            noise: crear_ruido_grupos() 
         };
 
         let uniforms_simplex = Uniforms_Simplex { 
@@ -196,11 +351,11 @@ fn main() {
         match shader_actual {
             1 => {
             render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays_sphere, planeta_gaseoso);
-            render_shader(&mut framebuffer, &uniforms_anillos, &vertex_arrays_anillos, lava_shader);
+            render_shader(&mut framebuffer, &uniforms_anillos, &vertex_arrays_anillos, anillos_shader);
             }
-            2 => render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays_sphere, black_and_white),
+            2 => render_shader(&mut framebuffer, &uniforms_cellular_puntas, &vertex_arrays_sphere, shader_puntas),
             3 => render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays_sphere, lava_shader),
-            4 => render_shader_simplex(&mut framebuffer, &uniforms_simplex, &vertex_arrays_sphere, shader_luna),
+            4 => render_shader(&mut framebuffer, &uniforms_cellular_grupos, &vertex_arrays_sphere, shader_grupos),
             5 => {
                 render_shader(&mut framebuffer, &uniforms_cellular, &vertex_arrays_sphere, cellular_shader);
 
@@ -226,7 +381,12 @@ fn main() {
 
                 
                 render_shader_simplex(&mut framebuffer, &luna, &vertex_arrays_sphere, shader_luna);
-            }
+            },
+            6 => render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays_sphere, shader_agua),
+            7 => render_shader(&mut framebuffer, &uniforms_cellular_bacteria, &vertex_arrays_sphere, bacteria_shader),
+            8 => render_shader(&mut framebuffer, &uniforms_camo, &vertex_arrays_sphere, camo_shader),
+            9 => render_shader(&mut framebuffer, &uniforms_cellular_agujero_negro, &vertex_arrays_sphere, shader_agujero_negro),
+            0 => render_shader(&mut framebuffer, &uniforms_variado, &vertex_arrays_sphere, shader_variado),
             _ => render_shader(&mut framebuffer, &uniforms_perlin, &vertex_arrays_sphere, fragment_shader),
         }
 
